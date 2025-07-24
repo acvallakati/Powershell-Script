@@ -1,0 +1,51 @@
+{
+  "properties": {
+    "displayName": "tags-mandate1",
+    "policyType": "Custom",
+    "mode": "All",
+    "metadata": {
+      "category": "Tags",
+      "createdBy": "b35a8934-9149-4cfd-8285-647e10e21f9a",
+      "createdOn": "2025-01-10T14:31:14.5446759Z",
+      "updatedBy": null,
+      "updatedOn": null
+    },
+    "version": "1.0.0",
+    "parameters": {},
+    "policyRule": {
+      "if": {
+        "anyOf": [
+          {
+            "field": "tags[Owner]",
+            "exists": "false"
+          },
+          {
+            "field": "tags[CostCenter]",
+            "exists": "false"
+          },
+          {
+            "field": "tags[supportemailid]",
+            "exists": "false"
+          }
+        ]
+      },
+      "then": {
+        "effect": "deny"
+      }
+    },
+    "versions": [
+      "1.0.0"
+    ]
+  },
+  "id": "/subscriptions/eeaf57fe-8f95-4615-90d2-8ecd4129fbda/providers/Microsoft.Authorization/policyDefinitions/a801f9fe-fc2c-4560-bff8-ae368b57373b",
+  "type": "Microsoft.Authorization/policyDefinitions",
+  "name": "a801f9fe-fc2c-4560-bff8-ae368b57373b",
+  "systemData": {
+    "createdBy": "akshayvallakati0312@gmail.com",
+    "createdByType": "User",
+    "createdAt": "2025-01-10T14:31:14.5160354Z",
+    "lastModifiedBy": "akshayvallakati0312@gmail.com",
+    "lastModifiedByType": "User",
+    "lastModifiedAt": "2025-01-10T14:31:14.5160354Z"
+  }
+}
