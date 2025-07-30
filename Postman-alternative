@@ -1,0 +1,62 @@
+# param (
+#     [string]$tfeToken,
+#     [string]$organization,
+#     [hashtable]$secrets
+# )
+ 
+$cred = Import-Clixml -Path .\secret.xml
+ 
+# Set variables
+$tfeToken = $cred.GetNetworkCredential().Password   
+$organization = "Org-Name"
+$secrets = @{
+    "SECRET_KEY_1" = "new_secret_value_2"
+    "Tag" = "Hanumanth-Created"
+}
+ 
+# Common headers
+$headers = @{
+    "Authorization" = "Bearer $tfeToken"
+    "Content-Type" = "application/vnd.api+json"
+}
+ 
+# 1. Get all workspaces in the organization (handle pagination if you have many workspaces)
+$workspacesUrl = "https://app.terraform.io/api/v2/organizations/$organization/workspaces"
+$workspacesResponse = Invoke-RestMethod -Uri $workspacesUrl -Headers $headers -Method Get
+$workspaces = $workspacesResponse.data
+ 
+foreach ($workspace in $workspaces) {
+    $workspaceName = $workspace.attributes.name
+    $workspaceId = $workspace.id
+    Write-Host "`nProcessing workspace: $workspaceName"
+ 
+    # 2. Get all variables for this workspace
+    $varsUrl = "https://app.terraform.io/api/v2/workspaces/$workspaceId/vars"
+    $varsResponse = Invoke-RestMethod -Uri $varsUrl -Headers $headers -Method Get
+ 
+    # 3. Loop through each secret key and update if it exists
+    foreach ($secretKey in $secrets.Keys) {
+        $existingVar = $varsResponse.data | Where-Object { $_.attributes.key -eq $secretKey }
+        if ($existingVar) {
+            $varId = $existingVar.id
+            $payload = @{
+                data = @{
+                    id = $varId
+                    type = "vars"
+                    attributes = @{
+                        value = $secrets[$secretKey]
+                        sensitive = $false
+                    }
+                }
+            } | ConvertTo-Json
+ 
+            $updateUrl = "https://app.terraform.io/api/v2/vars/$varId"
+            $result = Invoke-RestMethod -Uri $updateUrl -Headers $headers -Method Patch -Body $payload
+            Write-Host "Updated in $workspaceName"
+        } else {
+            Write-Host "Variable $secretKey does not exist in $workspaceName"
+        }
+    }
+}
+ 
+# .\postman2.ps1 -tfeToken $tfeToken -organization $organization -secrets $secrets
