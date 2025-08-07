@@ -1,0 +1,43 @@
+# Variables
+$TfeHost = "" # Change if using private TFE
+$TfeToken = "" # Insert your token here
+ 
+# Helper function to handle paginated TFE API responses
+function Get-TFEApiPagedResults {
+    param(
+        [string]$Uri
+    )
+    $results = @()
+    while ($Uri) {
+        $response = Invoke-RestMethod -Uri $Uri -Headers @{
+            "Authorization" = "Bearer $TfeToken"
+            "Content-Type"  = "application/vnd.api+json"
+        }
+        $results += $response.data
+        $Uri = $response.links.next
+    }
+    return $results
+}
+ 
+# Get all organizations
+$orgsUri = "https://$TfeHost/api/v2/organizations"
+$orgs = Get-TFEApiPagedResults -Uri $orgsUri
+ 
+$orgsWithoutWorkspaces = @()
+ 
+foreach ($org in $orgs) {
+    $orgName = $org.attributes.name
+    $wsUri = "https://$TfeHost/api/v2/organizations/$orgName/workspaces"
+    $workspaces = Get-TFEApiPagedResults -Uri $wsUri
+    if ($workspaces.Count -eq 0) {
+        # Create a custom object for CSV export
+        $orgsWithoutWorkspaces += [PSCustomObject]@{
+            Organization = $orgName
+        }
+    }
+}
+ 
+# Output to CSV
+$csvPath = "C:\Users\NAHANUMA\OneDrive - Capgemini\Documents\OneDrive - Capgemini\Desktop\Test\TFE_test/np_OrgsWithoutWorkspaces.csv"
+$orgsWithoutWorkspaces | Export-Csv -Path $csvPath -NoTypeInformation
+Write-Output "Organizations with NO workspaces have been saved to $csvPath"
