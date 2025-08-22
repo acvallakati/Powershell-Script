@@ -1,0 +1,23 @@
+$subcription = Get-AzSubscription 
+#Getting all subcription details
+
+foreach ($subname in $subcription.Name) {
+    
+    Select-AzSubscription -Subscription $subname 
+    #Logging into each subcription to fetch details
+    $managedDisks = Get-AzDisk
+    foreach ($md in $managedDisks) {
+    # ManagedBy property stores the Id of the VM to which Managed Disk is attached to
+    
+    if($md.ManagedBy -eq $null){
+        
+            Write-Host " unattached Managed Disk with Name: $($md.Name)"
+            $md.Name 
+            Remove-AzDisk -ResourceGroupName $md.ResourceGroupName -DiskName $md.Name -Force
+            
+        }
+    else {
+        Write-Host " "
+    }
+ }
+}
