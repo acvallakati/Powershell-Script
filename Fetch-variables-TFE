@@ -1,0 +1,97 @@
+# Variables - Customize these values
+$TFE_API_TOKEN1 = ""  #PROD
+$TFE_URL = ""
+$VARIABLE_NAME = "IAM_USER_NAME"
+$CSVFilePath = "\\avallakati\Downloads\Prod\Prod-User-IAM-10Days-$(Get-Date -UFormat "%Y-%m-%d-%H-%M").csv"  # Update the file path as needed
+$expiryDays = 90
+$daysUntilExpiryThreshold = 10  # Expiry threshold for the next 10 days
+
+# Prepare an array to store the results
+$variableDetails = @()
+
+# Encode the API token in base64
+$headers = @{
+    "Authorization" = "Bearer $TFE_API_TOKEN1"
+}
+
+# Get the list of organizations
+$orgsUrl = "$TFE_URL/api/v2/organizations"
+$orgsResponse = Invoke-RestMethod -Uri $orgsUrl -Method Get -Headers $headers
+
+# Loop through all organizations
+foreach ($org in $orgsResponse.data) {
+    $organization = $org.attributes.name
+    Write-Host "Processing organization: $organization"
+
+    # Get the list of workspaces for this organization
+    $workspacesUrl = "$TFE_URL/api/v2/organizations/$organization/workspaces"
+    $workspacesResponse = Invoke-RestMethod -Uri $workspacesUrl -Method Get -Headers $headers
+
+    # If there is at least one workspace, process the first workspace in the list
+    if ($workspacesResponse.data.Count -gt 0) {
+        $workspace = $workspacesResponse.data[0]  # Take the first workspace
+        $workspaceName = $workspace.attributes.name
+        Write-Host "Processing workspace: $workspaceName"
+
+        # Get the variable details for this workspace
+        $variableUrl = "$TFE_URL/api/v2/workspaces/$($workspace.id)/vars"
+        $variableResponse = Invoke-RestMethod -Uri $variableUrl -Method Get -Headers $headers
+
+        # Loop through all variables in the current workspace to find the desired variable
+        foreach ($variable in $variableResponse.data) {
+            if ($variable.attributes.key -eq $VARIABLE_NAME) {
+                # Get the username value from the variable
+                $username = $variable.attributes.value
+                
+                # Query Active Directory for passwordLastSet
+                try {
+                    $user = Get-ADUser -Filter { SamAccountName -eq $username } -Properties "passwordLastSet"
+                    $passwordLastSet = if ($user) { $user.passwordLastSet } else { "User not found" }
+                    
+                    if ($passwordLastSet -ne "User not found") {
+                        $passwordExpiryDate = $passwordLastSet + (New-TimeSpan -Days $expiryDays)
+
+                        # Check if the password is expiring within the next 10 days
+                        $currentDate = Get-Date
+                        $daysUntilExpiry = ($passwordExpiryDate - $currentDate).Days
+
+                        # Determine if the password is expiring soon
+                        $expiringSoon = if ($daysUntilExpiry -le $daysUntilExpiryThreshold) { "Yes" } else { "No" }
+                    }
+                } catch {
+                    $passwordLastSet = "Error querying AD"
+                    $expiringSoon = "Error"
+                }
+
+                # Add the variable details along with passwordLastSet and expiry check to the results array
+                $variableDetails += [PSCustomObject]@{
+                    Organization       = $organization
+                    WorkspaceName      = $workspaceName
+                    Value              = $variable.attributes.value
+                    PasswordLastSet    = $passwordLastSet
+                    PasswordExpiry     = $passwordExpiryDate
+                    ExpiringSoon       = $expiringSoon
+                }
+
+            
+            }
+        }
+
+       
+    }
+}
+
+# Check if the CSV file exists
+if ($variableDetails.Count -gt 0) {
+    if (Test-Path $CSVFilePath) {
+        # Append to the existing CSV file
+        $variableDetails | Export-Csv -Path $CSVFilePath -NoTypeInformation -Append
+        Write-Host "Variable details have been appended to $CSVFilePath"
+    } else {
+        # Create and write to a new CSV file
+        $variableDetails | Export-Csv -Path $CSVFilePath -NoTypeInformation
+        Write-Host "Variable details have been written to $CSVFilePath"
+    }
+} else {
+    Write-Host "No variables found matching the specified name '$VARIABLE_NAME'."
+}
