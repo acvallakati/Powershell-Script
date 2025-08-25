@@ -41,10 +41,10 @@
   "type": "Microsoft.Authorization/policyDefinitions",
   "name": "a801f9fe-fc2c-4560-bff8-ae368b57373b",
   "systemData": {
-    "createdBy": "akshayvallakati0312@gmail.com",
+    "createdBy": "",
     "createdByType": "User",
     "createdAt": "2025-01-10T14:31:14.5160354Z",
-    "lastModifiedBy": "akshayvallakati0312@gmail.com",
+    "lastModifiedBy": "",
     "lastModifiedByType": "User",
     "lastModifiedAt": "2025-01-10T14:31:14.5160354Z"
   }
