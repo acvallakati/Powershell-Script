@@ -1,0 +1,69 @@
+Auto Shutdown / Startup for Azure Virtual Machines
+Auto Shutdown
+Via Azure Portal
+1. Go to the Azure portal: Open https://portal.azure.com and sign in.
+2. Find your virtual machine: In the left menu, click on "Virtual machines", then click on the name of the VM you want to set up.
+3. Open Auto-shutdown settings: On the VM's page, scroll down to the "Operations" section and click on "Auto-shutdown".
+4. Turn on Auto-shutdown: Switch the toggle to "On".
+5. Set the shutdown time: Choose the time you want the VM to shut down every day.
+6. (Optional) Get a warning before shutdown:
+   - If you want a reminder before the VM shuts down, choose "Yes" under "Send notification before shutdown".
+   - Enter your email address to get the alert.
+7. Save your settings: Click "Save" at the top to apply the changes.
+Via Azure CLI
+For Single VM’s
+# Set the resource group name, VM name, and shutdown time
+RESOURCE_GROUP_NAME="myResourceGroup"
+VM_NAME="myVM"  # Add your VM's name here
+SHUTDOWN_TIME="18:00"
+# Set the auto-shutdown and auto-start properties for the VM
+az vm auto-shutdown -g $RESOURCE_GROUP_NAME -n $VM_NAME --time $SHUTDOWN_TIME
+For multiple VMs
+# Set the resource group name and shutdown time
+RESOURCE_GROUP_NAME="myResourceGroup"
+SHUTDOWN_TIME="18:00"
+for VM_ID in $(az vm list -g $RESOURCE_GROUP_NAME --query "[].id" -o tsv); do
+  az vm auto-shutdown --ids $VM_ID --time $SHUTDOWN_TIME
+done
+Auto Startup
+Auto-Startup of a VM using Azure Automation Account
+1. Go to the Azure portal: https://portal.azure.com
+2. In the left menu, select "Create a resource".
+3. Search for "Automation" and select "Automation Account".
+4. Click "Create".
+5. Fill in the details:
+   - Name: Choose a name for your automation account.
+   - Resource Group: Use an existing one or create a new one.
+   - Region: Choose the same region as your VM (recommended).
+6. Click "Review + Create", then "Create".
+Create a Runbook
+1. After the Automation Account is created, open it.
+2. In the left menu, click "Runbooks".
+3. Click "Create a runbook".
+4. Fill in:
+   - Name: e.g., StartMyVM
+   - Runbook type: PowerShell
+   - Runtime version: Use the default (usually 5.1 or 7.1)
+5. Click "Create".
+Add PowerShell Script to Start the VM
+1. In the Runbook editor, paste this script:
+param(
+    [string]$resourceGroupName = "<Your-Resource-Group-Name>",
+    [string]$vmName = "<Your-VM-Name>"
+)
+Start-AzVM -ResourceGroupName $resourceGroupName -Name $vmName
+2. Replace <Your-Resource-Group-Name> and <Your-VM-Name> with your actual values.
+3. Click "Save", then "Publish".
+Schedule the Runbook
+1. In the Runbook page, click "Link to schedule".
+2. Click "Create a new schedule".
+3. Set:
+   - Name: e.g., DailyStart
+   - Recurrence: Daily
+   - Time: Choose the time you want the VM to start
+4. Click "Create", then "OK" to link the schedule.
+5. Your VM will now automatically start at the time you set.
+Advantages
+1. Pay-as-you-go pricing means you're charged for the time your VM is running.
+2. Auto-shutdown ensures the VM is turned off when not in use (e.g., after business hours), helping you avoid unnecessary charges.
+
