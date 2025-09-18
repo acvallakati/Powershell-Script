@@ -1,0 +1,53 @@
+# Set your organization and PAT
+$organization = "your-org-name"
+$pat = "your-personal-access-token"
+$base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$pat"))
+ 
+# Output CSV file path
+$outputCsv = "ADO_Projects_Pipelines.csv"
+ 
+# Create an array to hold the results
+$results = @()
+ 
+# Get all projects
+$projectsUrl = "https://dev.azure.com/$organization/_apis/projects?api-version=7.1-preview.1"
+$projectsResponse = Invoke-RestMethod -Uri $projectsUrl -Method Get -Headers @{Authorization=("Basic $base64AuthInfo")}
+ 
+foreach ($project in $projectsResponse.value) {
+    $projectName = $project.name
+    $projectId = $project.id
+ 
+    # Get pipelines for each project
+    $pipelinesUrl = "https://dev.azure.com/$organization/$projectName/_apis/pipelines?api-version=7.1-preview.1"
+    $pipelinesResponse = Invoke-RestMethod -Uri $pipelinesUrl -Method Get -Headers @{Authorization=("Basic $base64AuthInfo")}
+ 
+    $pipelineCount = $pipelinesResponse.count
+ 
+    if ($pipelineCount -eq 0) {
+        # Add entry for project with no pipelines
+        $results += [PSCustomObject]@{
+            ProjectName   = $projectName
+            ProjectId     = $projectId
+            PipelineName  = "No pipelines"
+            PipelineId    = ""
+            PipelineUrl   = ""
+            PipelineCount = 0
+        }
+    } else {
+        foreach ($pipeline in $pipelinesResponse.value) {
+            $results += [PSCustomObject]@{
+                ProjectName   = $projectName
+                ProjectId     = $projectId
+                PipelineName  = $pipeline.name
+                PipelineId    = $pipeline.id
+                PipelineUrl   = "https://dev.azure.com/$organization/$projectName/_build?definitionId=$($pipeline.id)"
+                PipelineCount = $pipelineCount
+            }
+        }
+    }
+}
+ 
+# Export to CSV
+$results | Export-Csv -Path $outputCsv -NoTypeInformation -Encoding UTF8
+ 
+Write-Host "Export completed. File saved to: $outputCsv"
