@@ -1,0 +1,58 @@
+trigger: none
+
+parameters:
+  - name: Organization
+    type: string
+    default: ""
+    values:
+      - "Enter Value"
+      - "Enter Value"
+      - "Enter Value"
+  - name: Project
+    type: string
+    default: ""
+  - name: ConnectionName
+    type: string
+    default: ""
+
+variables:
+  - name: OrgId
+    ${{ if eq( parameters.Organization, 'Enter Value') }}:
+      value: "OrgId"
+    ${{ elseif eq( parameters.Organization, 'Enter Value') }}:
+      value: "OrgId"
+    ${{ else }}:
+      value: "OrgId"
+
+stages:
+  - stage: script
+    displayName: Run Script
+    jobs:
+      - job: script
+        displayName: Run Script
+        pool:
+          vmImage: "ubuntu-latest"
+        steps:
+          - task: AzureCLI@2
+            displayName: Run Script
+            inputs:
+              azureSubscription: Enter Value
+              addSpnToEnvironment: true
+              scriptType: pscore
+              scriptLocation: inlineScript
+              workingDirectory: "$(Build.SourcesDirectory)/new-service-connection"
+              inlineScript: |
+                echo "Run script."
+                ./Convert-ToFederatedWorkloadIdentityServiceConnection.ps1 `
+                  -AdoUsername "$(AdoUsername)" `
+                  -AdoPassword (ConvertTo-SecureString -String "$env:AdoPassword" -AsPlainText -Force) `
+                  -SPOwnerClientId "$env:servicePrincipalId" `
+                  -SPOwnerClientSecret (ConvertTo-SecureString -String "$env:servicePrincipalKey" -AsPlainText -Force) `
+                  -TenantId "$env:tenantId" `
+                  -Organization "${{ parameters.Organization }}" `
+                  -OrgId "$(OrgId)" `
+                  -Project "${{ parameters.Project }}" `
+                  -ConnectionName "${{ parameters.ConnectionName }}"
+              pwsh: true
+            env:
+              AdoPassword: $(AdoPassword)
